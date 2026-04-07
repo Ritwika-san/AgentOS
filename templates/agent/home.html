@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+
+        <div class="card p-4 mb-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <h4 class="mb-0">AgentOS</h4>
+                <span class="badge-ai">AI + Agent</span>
+            </div>
+            <p class="text-muted small mb-3">Give the agent a goal — it will think, search the web, and deliver results in real time.</p>
+            <div class="mb-3">
+                <textarea class="form-control" id="goalInput" rows="3"
+                    placeholder="e.g. Research the latest AI trends and summarize key findings"></textarea>
+            </div>
+            <button class="btn btn-primary" id="runBtn" onclick="runAgent()">
+                Run Agent
+            </button>
+        </div>
+
+        <div id="agentCard" class="card p-4 mb-4" style="display:none;">
+            <h5 class="mb-3">Agent Activity</h5>
+            <div id="agentLog" style="font-family: monospace; font-size: 13px; line-height: 2;"></div>
+        </div>
+
+        <div id="resultCard" class="card p-4 mb-4" style="display:none;">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <h5 class="mb-0">Final Result</h5>
+                <span class="badge-ai">Complete</span>
+            </div>
+            <div id="resultText" style="white-space: pre-wrap; line-height: 1.8;"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let socket = null
+
+function connectWebSocket() {
+    socket = new WebSocket('ws://' + window.location.host + '/ws/agent/')
+
+    socket.onopen = function() {
+        console.log('WebSocket connected')
+    }
+
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data)
+        handleMessage(data)
+    }
+
+    socket.onclose = function() {
+        console.log('WebSocket disconnected')
+        socket = null
+    }
+
+    socket.onerror = function(error) {
+        console.log('WebSocket error:', error)
+    }
+}
+
+function handleMessage(data) {
+    const agentCard = document.getElementById('agentCard')
+    const agentLog = document.getElementById('agentLog')
+    const resultCard = document.getElementById('resultCard')
+    const resultText = document.getElementById('resultText')
+    const runBtn = document.getElementById('runBtn')
+
+    if (data.type === 'connected') {
+        console.log('Agent ready')
+    }
+
+    else if (data.type === 'thinking') {
+        agentCard.style.display = 'block'
+        const line = document.createElement('div')
+        line.style.color = '#7f77dd'
+        line.innerHTML = '▶ ' + data.message
+        agentLog.appendChild(line)
+        agentLog.scrollTop = agentLog.scrollHeight
+    }
+
+    else if (data.type === 'result') {
+        resultCard.style.display = 'block'
+        resultText.textContent = data.message
+        resultCard.scrollIntoView({ behavior: 'smooth' })
+        runBtn.disabled = false
+        runBtn.innerHTML = 'Run Agent'
+    }
+
+    else if (data.type === 'error') {
+        agentCard.style.display = 'block'
+        const line = document.createElement('div')
+        line.style.color = '#e24b4a'
+        line.innerHTML = '✕ ' + data.message
+        agentLog.appendChild(line)
+        runBtn.disabled = false
+        runBtn.innerHTML = 'Run Agent'
+    }
+}
+
+function runAgent() {
+    const goal = document.getElementById('goalInput').value.trim()
+    const runBtn = document.getElementById('runBtn')
+    const agentLog = document.getElementById('agentLog')
+    const agentCard = document.getElementById('agentCard')
+    const resultCard = document.getElementById('resultCard')
+
+    if (!goal) {
+        alert('Please enter a goal!')
+        return
+    }
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        alert('Not connected. Please refresh the page.')
+        return
+    }
+
+    agentLog.innerHTML = ''
+    agentCard.style.display = 'none'
+    resultCard.style.display = 'none'
+
+    runBtn.disabled = true
+    runBtn.innerHTML = '<span class="spinner"></span>Agent running...'
+
+    socket.send(JSON.stringify({ goal: goal }))
+}
+
+connectWebSocket()
+</script>
+{% endblock %}
