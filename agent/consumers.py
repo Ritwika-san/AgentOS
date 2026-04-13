@@ -7,9 +7,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
     
     async def connect(self):
         self.user = self.scope['user']
-        if not self.user.is_authenticated:
-            await self.close()
-            return
         await self.accept()
         await self.send(text_data=json.dumps({
             'type': 'connected',
