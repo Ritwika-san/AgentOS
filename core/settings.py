@@ -1,6 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import dj_database_url
 
 load_dotenv()
 
@@ -107,3 +108,11 @@ CSRF_TRUSTED_ORIGINS = [
 
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+if os.getenv('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        conn_max_age=600,
+        ssl_require=True
+    )
